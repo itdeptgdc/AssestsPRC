@@ -1,0 +1,6 @@
+node_modules/
+.next/
+runtime/
+backend/uploads/
+backend/.env
+frontend/.env.local

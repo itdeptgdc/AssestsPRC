@@ -1,0 +1,29 @@
+================Remote Desktop Connection=================
+Asset Server
+Computer: 192.168.55.156
+Username: administrator
+pass: dr0wss@P
+
+
+
+
+----------Website --------------
+Web URL: http://localhost:3000
+Email:assestsadmin@gmail.com
+Password: password
+
+-------------Database---------------
+Adminer	http://localhost:8080
+System: PostgreSQL 
+Server: localhost 
+Username: postgres 
+Password: postgres 
+Database: assetqr_db
+
+
+
+
+------------To Run outside remote any brosewer--------------
+URL: http://192.168.55.156:3000/login
+open powershell and run cmd:
+New-NetFirewallRule -DisplayName "AssestsQR (LAN) HTTP/HTTPS/3000" -Direction Inbound -Protocol TCP -LocalPort 80,443,3000 -RemoteAddress 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 -Profile Any -Action Allow
