@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { useAuth, useI18n } from './providers';
-import { NAV, isActive, pageTitleKey } from './nav';
+import { NAV, canSee, isActive, pageTitleKey } from './nav';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggle from './ThemeToggle';
 import Logo, { LogoMark } from './Logo';
@@ -98,7 +98,7 @@ function SidebarContent({ onNavigate, collapsed = false, idPrefix = 'd' }) {
 
       <nav className="scroll-dark flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-3 pb-4" onMouseLeave={() => setTip(null)}>
         {NAV.map((group, gi) => {
-          const items = group.items.filter((it) => !it.role || can(it.role));
+          const items = group.items.filter((it) => canSee(can, it));
           if (!items.length) return null;
           return (
             <div key={gi}>
@@ -295,13 +295,14 @@ function GlobalSearch() {
 /* ---------- Android-style bottom navigation (Material 3) ---------- */
 function MobileNav({ onMenu }) {
   const { t } = useI18n();
+  const { can } = useAuth();
   const pathname = usePathname();
   // short one-line labels for the phone bar (the sidebar keeps the full names)
   const items = [
-    { href: '/', icon: LayoutDashboard, label: t('mnav.dashboard') },
-    { href: '/assets', icon: Package, label: t('mnav.assets') },
-    { href: '/scan', icon: ScanLine, label: t('nav.scan'), center: true },
-    { href: '/master/departments', icon: Building2, label: t('mnav.departments') },
+    { href: '/', icon: LayoutDashboard, label: t('mnav.dashboard'), key: 'dashboard' },
+    { href: '/assets', icon: Package, label: t('mnav.assets'), key: 'assets' },
+    { href: '/scan', icon: ScanLine, label: t('nav.scan'), center: true, key: 'scan' },
+    { href: '/master/departments', icon: Building2, label: t('mnav.departments'), key: 'departments' },
   ];
   // every item = 32px icon row + one label line, so all labels sit on the same baseline
   const label = (text, active) => (
@@ -311,6 +312,7 @@ function MobileNav({ onMenu }) {
     <nav className="no-print fixed inset-x-0 bottom-0 z-40 select-none border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgba(15,23,42,.15)] backdrop-blur-lg lg:hidden">
       <div className="mx-auto grid h-16 max-w-lg grid-cols-5 items-end pb-2">
         {items.map((it) => {
+          if (!canSee(can, it)) return <span key={it.href} aria-hidden />; // keep the 5-slot layout
           const active = isActive(pathname, it.href);
           if (it.center) {
             return (

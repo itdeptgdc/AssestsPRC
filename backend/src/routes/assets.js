@@ -1,10 +1,9 @@
 const express = require('express');
 const { query, tx, insert, update, pick, logActivity, todayLocal } = require('../db');
-const { requireRole } = require('../middleware/auth');
+const { requirePerm } = require('../middleware/auth');
 const { broadcast } = require('../events');
 
 const r = express.Router();
-const WRITE = ['admin', 'manager', 'staff'];
 
 const FIELDS = [
   'company_id', 'department_id', 'category_id', 'type_id', 'year_code',
@@ -171,7 +170,7 @@ r.get('/:id', async (req, res) => {
 });
 
 // ---------- create ----------
-r.post('/', requireRole(...WRITE), async (req, res) => {
+r.post('/', requirePerm('assets', 'add'), async (req, res) => {
   const data = pick(req.body, FIELDS);
   if (!data.name || !data.category_id) return res.status(400).json({ error: 'required', field: !data.name ? 'name' : 'category_id' });
   if (data.status && !STATUSES.includes(data.status)) return res.status(400).json({ error: 'invalid_input' });
@@ -204,7 +203,7 @@ r.post('/', requireRole(...WRITE), async (req, res) => {
 });
 
 // ---------- update ----------
-r.put('/:id', requireRole(...WRITE), async (req, res) => {
+r.put('/:id', requirePerm('assets', 'edit'), async (req, res) => {
   const data = pick(req.body, FIELDS);
   if (data.status && !STATUSES.includes(data.status)) return res.status(400).json({ error: 'invalid_input' });
   if (data.cost !== undefined) data.cost = Number(data.cost) || 0;
@@ -235,7 +234,7 @@ r.put('/:id', requireRole(...WRITE), async (req, res) => {
 });
 
 // ---------- delete ----------
-r.delete('/:id', requireRole('admin', 'manager'), async (req, res) => {
+r.delete('/:id', requirePerm('assets', 'delete'), async (req, res) => {
   const { rows } = await query('DELETE FROM assets WHERE id=$1 RETURNING code, name', [req.params.id]);
   if (!rows[0]) return res.status(404).json({ error: 'not_found' });
   await logActivity({ query }, req.user.id, 'delete', 'asset', Number(req.params.id), rows[0]);

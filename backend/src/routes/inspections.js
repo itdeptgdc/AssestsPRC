@@ -1,6 +1,6 @@
 const express = require('express');
 const { query, tx, insert, logActivity, todayLocal } = require('../db');
-const { requireRole } = require('../middleware/auth');
+const { requirePerm } = require('../middleware/auth');
 const { addMonths } = require('./assets');
 
 const r = express.Router();
@@ -71,7 +71,7 @@ r.get('/', async (req, res) => {
 });
 
 // Record an inspection
-r.post('/', requireRole('admin', 'manager', 'staff'), async (req, res) => {
+r.post('/', requirePerm('inspections', 'add'), async (req, res) => {
   const b = req.body || {};
   if (!b.asset_id) return res.status(400).json({ error: 'required', field: 'asset_id' });
   const result = RESULTS.includes(b.result) ? b.result : 'pass';
@@ -108,7 +108,7 @@ r.post('/', requireRole('admin', 'manager', 'staff'), async (req, res) => {
   res.status(201).json(out);
 });
 
-r.delete('/:id', requireRole('admin', 'manager'), async (req, res) => {
+r.delete('/:id', requirePerm('inspections', 'delete'), async (req, res) => {
   const { rowCount } = await query('DELETE FROM inspections WHERE id=$1', [req.params.id]);
   if (!rowCount) return res.status(404).json({ error: 'not_found' });
   res.json({ ok: true });

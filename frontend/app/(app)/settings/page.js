@@ -167,7 +167,7 @@ export default function SettingsPage() {
           <div className="mt-5 flex justify-end"><Button icon={KeyRound} loading={busy === 'pw'} onClick={savePw} disabled={!pw.current_password || !pw.new_password}>{t('settings.change_password')}</Button></div>
         </Card>
 
-        {can('admin') && org && (
+        {can('settings.edit') && org && (
           <Card i={3} className="card-pad">
             <Head icon={Building} title={t('settings.organization')} />
             <div className="grid gap-4 sm:grid-cols-2">

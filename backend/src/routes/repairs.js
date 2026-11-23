@@ -1,6 +1,6 @@
 const express = require('express');
 const { query, tx, update, pick, logActivity, todayLocal } = require('../db');
-const { requireRole } = require('../middleware/auth');
+const { requirePerm } = require('../middleware/auth');
 const { createRepair } = require('./inspections');
 
 const r = express.Router();
@@ -45,7 +45,7 @@ r.get('/', async (req, res) => {
   res.json({ items: rows, total: rows[0]?.total_count || 0, page, limit, stats: stats[0] });
 });
 
-r.post('/', requireRole('admin', 'manager', 'staff'), async (req, res) => {
+r.post('/', requirePerm('repairs', 'add'), async (req, res) => {
   const b = req.body || {};
   if (!b.asset_id || !String(b.problem || '').trim()) return res.status(400).json({ error: 'required' });
   const row = await tx((db) => createRepair(db, req.user.id, {
@@ -59,7 +59,7 @@ r.post('/', requireRole('admin', 'manager', 'staff'), async (req, res) => {
   res.status(201).json(row);
 });
 
-r.put('/:id', requireRole('admin', 'manager', 'staff'), async (req, res) => {
+r.put('/:id', requirePerm('repairs', 'edit'), async (req, res) => {
   const data = pick(req.body, ['status', 'priority', 'technician', 'cost', 'resolution', 'problem', 'completed_at', 'images']);
   if (data.status && !STATUSES.includes(data.status)) return res.status(400).json({ error: 'invalid_input' });
   if (data.priority && !PRIORITIES.includes(data.priority)) return res.status(400).json({ error: 'invalid_input' });
@@ -94,7 +94,7 @@ r.put('/:id', requireRole('admin', 'manager', 'staff'), async (req, res) => {
   res.json(row);
 });
 
-r.delete('/:id', requireRole('admin', 'manager'), async (req, res) => {
+r.delete('/:id', requirePerm('repairs', 'delete'), async (req, res) => {
   const { rowCount } = await query('DELETE FROM repairs WHERE id=$1', [req.params.id]);
   if (!rowCount) return res.status(404).json({ error: 'not_found' });
   res.json({ ok: true });

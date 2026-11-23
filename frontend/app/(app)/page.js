@@ -64,7 +64,7 @@ export default function Dashboard() {
         </motion.div>
         <div className="flex flex-wrap items-center gap-2">
           <Button icon={ScanLine} onClick={() => router.push('/scan')}>{t('nav.scan')}</Button>
-          {can('write') && <Button variant="secondary" icon={Plus} onClick={() => router.push('/assets/new')}>{t('assets.add')}</Button>}
+          {can('assets.add') && <Button variant="secondary" icon={Plus} onClick={() => router.push('/assets/new')}>{t('assets.add')}</Button>}
           <div className="overflow-x-auto"><Segmented id="period" value={period} onChange={setPeriod} options={periods} /></div>
         </div>
       </div>

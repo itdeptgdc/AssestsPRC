@@ -17,7 +17,7 @@ const badge = (d) => d.code || (d.name || '?').trim().charAt(0).toUpperCase();
 /** Shared column layout for the header and rows on large screens (email column from xl) */
 const GRID = 'lg:grid-cols-[5.5rem_6rem_minmax(0,2fr)_minmax(0,1.2fr)_4.5rem_7.5rem] lg:gap-4 xl:grid-cols-[5.5rem_6rem_minmax(0,2fr)_minmax(0,1.2fr)_4.5rem_minmax(0,1.5fr)_7.5rem]';
 
-function RowMenu({ d, writable, onEdit, onDelete }) {
+function RowMenu({ d, perm, onEdit, onDelete }) {
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -39,8 +39,8 @@ function RowMenu({ d, writable, onEdit, onDelete }) {
           <motion.div initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={{ duration: 0.12 }}
             className="absolute right-0 z-20 mt-1.5 w-52 origin-top-right rounded-xl border border-slate-100 bg-white p-1.5 shadow-xl">
             <button className={item} onClick={go(() => router.push(`/assets?department_id=${d.id}`))}><Eye className="h-4 w-4 text-slate-400" />{t('location.view_assets')}</button>
-            {writable && <>
-              <button className={item} onClick={go(onEdit)}><Pencil className="h-4 w-4 text-slate-400" />{t('common.edit')}</button>
+            {perm.edit && <button className={item} onClick={go(onEdit)}><Pencil className="h-4 w-4 text-slate-400" />{t('common.edit')}</button>}
+            {perm.del && <>
               <div className="my-1 border-t border-slate-100" />
               <button className={cn(item, '!text-rose-600 hover:bg-rose-50')} onClick={go(onDelete)}><Trash2 className="h-4 w-4" />{t('common.delete')}</button>
             </>}
@@ -54,7 +54,7 @@ function RowMenu({ d, writable, onEdit, onDelete }) {
 export default function DepartmentsPage() {
   const { t, te } = useI18n();
   const { can } = useAuth();
-  const writable = can('manage');
+  const perm = { add: can('departments.add'), edit: can('departments.edit'), del: can('departments.delete') };
   const [q, setQ] = useState('');
   const dq = useDebounce(q);
   const { data, loading, reload, setData } = useApi('/departments', { q: dq });
@@ -123,7 +123,7 @@ export default function DepartmentsPage() {
   return (
     <div>
       <PageHeader title={t('dept.title')} subtitle={t('dept.subtitle', { n: rows.length })}
-        actions={writable && <Button icon={Plus} onClick={() => open(null)}>{t('dept.add')}</Button>} />
+        actions={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('dept.add')}</Button>} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s, i) => (
@@ -144,7 +144,7 @@ export default function DepartmentsPage() {
         {loading && !data ? (
           <div className="space-y-3 p-5">{[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-14" />)}</div>
         ) : rows.length === 0 ? (
-          <EmptyState icon={Building2} title={t('common.no_data')} action={writable && <Button icon={Plus} onClick={() => open(null)}>{t('dept.add')}</Button>} />
+          <EmptyState icon={Building2} title={t('common.no_data')} action={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('dept.add')}</Button>} />
         ) : (
           <div className="divide-y divide-slate-100">
             {/* column header (desktop) */}
@@ -167,7 +167,7 @@ export default function DepartmentsPage() {
                 <span className="hidden font-mono text-sm font-semibold text-slate-700 lg:block">
                   {d.dept_no || <span className="font-sans font-normal text-slate-300">—</span>}
                 </span>
-                <button type="button" onClick={() => writable && open(d)} className="min-w-0 flex-1 text-left">
+                <button type="button" onClick={() => perm.edit && open(d)} className="min-w-0 flex-1 text-left">
                   <p className="truncate text-[14px] font-semibold text-slate-800">{d.name}</p>
                   {/* mobile / tablet: details under the name */}
                   <p className="truncate text-xs text-slate-500 lg:hidden">
@@ -184,8 +184,8 @@ export default function DepartmentsPage() {
                   {d.email ? <><Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{d.email}</span></> : <span className="text-slate-300">—</span>}
                 </span>
                 <div className="flex shrink-0 items-center justify-end gap-3">
-                  {writable ? <Toggle checked={!!d.active} onChange={() => toggle(d)} /> : null}
-                  <RowMenu d={d} writable={writable} onEdit={() => open(d)} onDelete={() => setDel(d)} />
+                  {perm.edit ? <Toggle checked={!!d.active} onChange={() => toggle(d)} /> : null}
+                  <RowMenu d={d} perm={perm} onEdit={() => open(d)} onDelete={() => setDel(d)} />
                 </div>
               </motion.div>
             ))}

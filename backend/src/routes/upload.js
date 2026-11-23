@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
+const { requireAnyWrite } = require('../middleware/auth');
 
 const ALLOWED = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
@@ -23,7 +24,7 @@ module.exports = (dir) => {
   });
 
   const r = express.Router();
-  r.post('/', upload.array('files', 10), (req, res) => {
+  r.post('/', requireAnyWrite, upload.array('files', 10), (req, res) => {
     res.json({ files: (req.files || []).map((f) => `/uploads/${f.filename}`) });
   });
   return r;

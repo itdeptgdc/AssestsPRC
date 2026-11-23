@@ -294,15 +294,15 @@ export default function ScanPage() {
           <Button variant="secondary" icon={ScanLine} onClick={scanNext} className="mr-auto">{t('scan.scan_next')}</Button>
           <Button onClick={() => router.push(`/assets/${result.asset.id}`)}>{t('scan.view_details')} <ArrowRight className="h-4 w-4" /></Button>
         </> : <>
-          {can('write') && <Button variant="secondary" icon={Plus} onClick={() => router.push('/assets/new')} className="mr-auto">{t('scan.add_asset')}</Button>}
+          {can('assets.add') && <Button variant="secondary" icon={Plus} onClick={() => router.push('/assets/new')} className="mr-auto">{t('scan.add_asset')}</Button>}
           <Button icon={ScanLine} onClick={scanNext}>{t('scan.scan_again')}</Button>
         </>}>
         {result?.asset && (
           <ScanResult asset={result.asset}>
-            {can('write') && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="secondary" icon={ClipboardCheck} onClick={() => openAction('inspect')}>{t('assets.inspect')}</Button>
-                <Button variant="secondary" icon={Wrench} onClick={() => openAction('repair')}>{t('assets.report_repair')}</Button>
+            {(can('inspections.add') || can('repairs.add')) && (
+              <div className={can('inspections.add') && can('repairs.add') ? 'grid grid-cols-2 gap-2' : 'grid gap-2'}>
+                {can('inspections.add') && <Button variant="secondary" icon={ClipboardCheck} onClick={() => openAction('inspect')}>{t('assets.inspect')}</Button>}
+                {can('repairs.add') && <Button variant="secondary" icon={Wrench} onClick={() => openAction('repair')}>{t('assets.report_repair')}</Button>}
               </div>
             )}
           </ScanResult>

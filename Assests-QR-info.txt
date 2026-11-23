@@ -27,3 +27,9 @@ Database: assetqr_db
 URL: http://192.168.55.156:3000/login
 open powershell and run cmd:
 New-NetFirewallRule -DisplayName "AssestsQR (LAN) HTTP/HTTPS/3000" -Direction Inbound -Protocol TCP -LocalPort 80,443,3000 -RemoteAddress 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 -Profile Any -Action Allow
+
+
+cd C:\Users\Administrator\Desktop\AssestsPRC
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+
+powershell -ExecutionPolicy Bypass -File .\stop.ps1

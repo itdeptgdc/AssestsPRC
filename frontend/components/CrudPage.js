@@ -12,7 +12,7 @@ import { Badge, Button, ConfirmModal, EmptyState, Field, IconButton, Input, Moda
  * Generic master-data page.
  * fields: [{ key, label, type: 'text'|'textarea'|'select'|'number'|'toggle', required, options, span, list, render, mono }]
  */
-export default function CrudPage({ endpoint, title, subtitle, icon, fields, defaults = {}, canWrite = 'manage' }) {
+export default function CrudPage({ endpoint, title, subtitle, icon, fields, defaults = {}, permKey = endpoint.replace(/^\//, '') }) {
   const { t, te } = useI18n();
   const { can } = useAuth();
   const [q, setQ] = useState('');
@@ -23,7 +23,9 @@ export default function CrudPage({ endpoint, title, subtitle, icon, fields, defa
   const [saving, setSaving] = useState(false);
   const [del, setDel] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const writable = can(canWrite);
+  // permKey = permission module (Users → Roles & permissions), defaults to the endpoint name
+  const perm = { add: can(`${permKey}.add`), edit: can(`${permKey}.edit`), del: can(`${permKey}.delete`) };
+  const writable = perm.edit || perm.del;
   const listFields = useMemo(() => fields.filter((f) => f.list !== false), [fields]);
 
   const open = (row) => {
@@ -78,13 +80,13 @@ export default function CrudPage({ endpoint, title, subtitle, icon, fields, defa
   return (
     <div>
       <PageHeader title={title} subtitle={subtitle || t('common.n_items', { n: rows.length })}
-        actions={writable && <Button icon={Plus} onClick={() => open(null)}>{t('common.add')}</Button>} />
+        actions={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('common.add')}</Button>} />
 
       <div className="card mb-4 p-3"><SearchInput value={q} onChange={setQ} placeholder={t('common.search_ph')} /></div>
 
       <div className="card overflow-hidden">
         {loading && !data ? <div className="space-y-3 p-5">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-11" />)}</div> :
-          rows.length === 0 ? <EmptyState icon={Icon} title={t('common.no_data')} action={writable && <Button icon={Plus} onClick={() => open(null)}>{t('common.add')}</Button>} /> : (
+          rows.length === 0 ? <EmptyState icon={Icon} title={t('common.no_data')} action={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('common.add')}</Button>} /> : (
             <>
               <div className="table-wrap hidden md:block">
                 <table className="tbl">
@@ -103,8 +105,8 @@ export default function CrudPage({ endpoint, title, subtitle, icon, fields, defa
                         {writable && (
                           <td>
                             <div className="flex justify-end gap-1.5">
-                              <IconButton icon={Pencil} title={t('common.edit')} onClick={() => open(row)} />
-                              <IconButton icon={Trash2} tone="red" title={t('common.delete')} onClick={() => setDel(row)} />
+                              {perm.edit && <IconButton icon={Pencil} title={t("common.edit")} onClick={() => open(row)} />}
+                              {perm.del && <IconButton icon={Trash2} tone="red" title={t("common.delete")} onClick={() => setDel(row)} />}
                             </div>
                           </td>
                         )}
@@ -122,7 +124,7 @@ export default function CrudPage({ endpoint, title, subtitle, icon, fields, defa
                       ))}
                     </div>
                     <Badge tone="brand">{row.asset_count ?? 0}</Badge>
-                    {writable && <IconButton icon={Pencil} onClick={() => open(row)} />}
+                    {perm.edit && <IconButton icon={Pencil} onClick={() => open(row)} />}
                   </div>
                 ))}
               </div>
@@ -132,7 +134,7 @@ export default function CrudPage({ endpoint, title, subtitle, icon, fields, defa
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? t('common.edit') : t('common.add')} subtitle={title}
         footer={<>
-          {editing?.id && <Button variant="ghost" className="mr-auto text-rose-600 hover:bg-rose-50" icon={Trash2} onClick={() => { setDel(editing); setEditing(null); }}>{t('common.delete')}</Button>}
+          {editing?.id && perm.del && <Button variant="ghost" className="mr-auto text-rose-600 hover:bg-rose-50" icon={Trash2} onClick={() => { setDel(editing); setEditing(null); }}>{t('common.delete')}</Button>}
           <Button variant="secondary" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
           <Button onClick={save} loading={saving}>{t('common.save')}</Button>
         </>}>

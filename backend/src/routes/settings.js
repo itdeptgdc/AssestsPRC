@@ -1,16 +1,16 @@
 const express = require('express');
 const { query } = require('../db');
-const { requireRole } = require('../middleware/auth');
+const { requirePerm } = require('../middleware/auth');
 
 const r = express.Router();
 const KEYS = ['org_name', 'org_subtitle', 'due_soon_days', 'default_inspection_months', 'currency'];
 
 r.get('/', async (_req, res) => {
-  const { rows } = await query('SELECT key, value FROM settings');
+  const { rows } = await query(`SELECT key, value FROM settings WHERE key <> 'role_permissions'`);
   res.json(Object.fromEntries(rows.map((x) => [x.key, x.value])));
 });
 
-r.put('/', requireRole('admin'), async (req, res) => {
+r.put('/', requirePerm('settings', 'edit'), async (req, res) => {
   for (const k of KEYS) {
     if (req.body?.[k] !== undefined) {
       await query(
@@ -19,7 +19,7 @@ r.put('/', requireRole('admin'), async (req, res) => {
       );
     }
   }
-  const { rows } = await query('SELECT key, value FROM settings');
+  const { rows } = await query(`SELECT key, value FROM settings WHERE key <> 'role_permissions'`);
   res.json(Object.fromEntries(rows.map((x) => [x.key, x.value])));
 });
 

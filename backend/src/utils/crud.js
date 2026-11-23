@@ -1,12 +1,13 @@
 const express = require('express');
 const { query, insert, update, pick } = require('../db');
-const { requireRole } = require('../middleware/auth');
+const { requirePerm } = require('../middleware/auth');
 
 /**
  * Generic CRUD router for simple master-data tables.
  * list(whereSql) may return a custom SELECT (alias the base table as t).
+ * module: permission module for writes; perm maps add/edit/delete to another action (e.g. all 'edit').
  */
-function crudRouter({ table, fields, required = [], search = [], order = 't.code', list, json = [], writeRoles = ['admin', 'manager'], filters = [], beforeCreate, afterCreate }) {
+function crudRouter({ table, fields, required = [], search = [], order = 't.code', list, json = [], module, perm = {}, filters = [], beforeCreate, afterCreate }) {
   const r = express.Router();
 
   r.get('/', async (req, res) => {
@@ -35,7 +36,7 @@ function crudRouter({ table, fields, required = [], search = [], order = 't.code
     res.json(rows[0]);
   });
 
-  r.post('/', requireRole(...writeRoles), async (req, res) => {
+  r.post('/', requirePerm(module, perm.add || 'add'), async (req, res) => {
     const data = pick(req.body, fields);
     if (beforeCreate) await beforeCreate(data);
     for (const f of required) {
@@ -48,14 +49,14 @@ function crudRouter({ table, fields, required = [], search = [], order = 't.code
     if (afterCreate) { try { afterCreate(row, req); } catch (e) { console.error('[afterCreate]', e.message); } }
   });
 
-  r.put('/:id', requireRole(...writeRoles), async (req, res) => {
+  r.put('/:id', requirePerm(module, perm.edit || 'edit'), async (req, res) => {
     const data = pick(req.body, fields);
     const row = await update({ query }, table, req.params.id, data, json);
     if (!row) return res.status(404).json({ error: 'not_found' });
     res.json(row);
   });
 
-  r.delete('/:id', requireRole(...writeRoles), async (req, res) => {
+  r.delete('/:id', requirePerm(module, perm.delete || 'delete'), async (req, res) => {
     const { rowCount } = await query(`DELETE FROM ${table} WHERE id=$1`, [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'not_found' });
     res.json({ ok: true });

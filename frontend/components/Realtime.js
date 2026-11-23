@@ -66,7 +66,10 @@ function chime(ctxRef) {
 
 export function RealtimeProvider({ children }) {
   const { t, lang } = useI18n();
-  const { user } = useAuth() || {};
+  const { user, refresh } = useAuth() || {};
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  const userId = user?.id;
   const [items, setItems] = useState([]);
   const [seen, setSeen] = useState(0);
   const [voiceOn, setVoiceOnState] = useState(true);
@@ -146,7 +149,7 @@ export function RealtimeProvider({ children }) {
 
   // ---------- connection (fetch stream so the sign-in token goes in a header, never in the URL) ----------
   useEffect(() => {
-    if (!user) return undefined;
+    if (!userId) return undefined;
     let stop = false; let ctrl; let wait = 2000;
     const run = async () => {
       while (!stop) {
@@ -168,6 +171,8 @@ export function RealtimeProvider({ children }) {
               const data = block.split('\n').filter((l) => l.startsWith('data: ')).map((l) => l.slice(6)).join('\n');
               try {
                 const e = JSON.parse(data);
+                // an admin changed role permissions: reload my own (menus / buttons update), no toast
+                if (e.type === 'permissions') { refreshRef.current?.(); continue; }
                 setItems((list) => { const next = [{ ...e, rid: `${e.at}-${e.id}` }, ...list].slice(0, 30); write(LIST_KEY, next); return next; });
                 announce(e);
               } catch {}
@@ -182,7 +187,7 @@ export function RealtimeProvider({ children }) {
     };
     run();
     return () => { stop = true; ctrl?.abort(); };
-  }, [user, announce]);
+  }, [userId, announce]);
 
   const unread = items.filter((x) => new Date(x.at).getTime() > seen).length;
   const markSeen = useCallback(() => { const now = Date.now(); setSeen(now); write(SEEN_KEY, now); }, []);

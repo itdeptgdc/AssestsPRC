@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { query } = require('../db');
 const { signToken, authenticate } = require('../middleware/auth');
+const { getForRole } = require('../permissions');
 
 const r = express.Router();
 
@@ -29,10 +30,10 @@ r.post('/login', async (req, res) => {
   attempts.delete(key);
   await query('UPDATE users SET last_login=NOW() WHERE id=$1', [user.id]);
   const { password_hash, token_version, ...safe } = user;
-  res.json({ token: signToken(user), user: safe });
+  res.json({ token: signToken(user), user: { ...safe, permissions: await getForRole(user.role) } });
 });
 
-r.get('/me', authenticate, (req, res) => res.json(req.user));
+r.get('/me', authenticate, (req, res) => res.json({ ...req.user, permissions: req.perms }));
 
 r.put('/me', authenticate, async (req, res) => {
   const { name, phone, current_password, new_password } = req.body || {};
@@ -48,7 +49,7 @@ r.put('/me', authenticate, async (req, res) => {
     'UPDATE users SET name=COALESCE($1,name), phone=$2 WHERE id=$3 RETURNING id,name,email,role,phone,active',
     [name || null, phone ?? req.user.phone, req.user.id]
   );
-  res.json(rows[0]);
+  res.json({ ...rows[0], permissions: req.perms });
 });
 
 module.exports = r;

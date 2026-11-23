@@ -39,7 +39,7 @@ export default function RepairsPage() {
       <PageHeader title={t('repair.title')} subtitle={t('repair.subtitle')}
         actions={<>
           <ExportMenu path="/reports/export/repairs" name="repair-jobs" params={{ status: status === 'all' ? '' : status, priority, q: dq }} />
-          {can('write') && <Button icon={Plus} onClick={() => setCreating(true)}>{t('repair.new')}</Button>}
+          {can('repairs.add') && <Button icon={Plus} onClick={() => setCreating(true)}>{t('repair.new')}</Button>}
         </>} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -77,7 +77,7 @@ export default function RepairsPage() {
             <div className="divide-y divide-slate-100">
               {items.map((r, i) => (
                 <motion.div key={r.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                  onClick={() => can('write') && setEdit(r)}
+                  onClick={() => can('repairs.edit') && setEdit(r)}
                   className="flex cursor-pointer flex-col gap-3 p-4 transition hover:bg-brand-50/30 sm:flex-row sm:items-center sm:px-5">
                   <div className="flex min-w-0 flex-1 gap-3">
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100">

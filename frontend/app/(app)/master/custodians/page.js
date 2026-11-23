@@ -15,7 +15,7 @@ import {
 const AVATAR = ['from-brand-500 to-violet-500', 'from-sky-500 to-cyan-500', 'from-emerald-500 to-teal-500', 'from-amber-500 to-orange-500', 'from-rose-500 to-pink-500'];
 const displayName = (c) => (c.employee_code ? `${c.name} - (${c.employee_code})` : c.name);
 
-function CardMenu({ c, onEdit, onToggle, onDelete }) {
+function CardMenu({ c, perm, onEdit, onToggle, onDelete }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -35,10 +35,12 @@ function CardMenu({ c, onEdit, onToggle, onDelete }) {
         {open && (
           <motion.div initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={{ duration: 0.12 }}
             className="absolute left-0 z-20 mt-1.5 w-52 origin-top-left rounded-xl border border-slate-100 bg-white p-1.5 shadow-xl">
-            <button className={item} onClick={go(onEdit)}><Pencil className="h-4 w-4 text-slate-400" />{t('common.edit')}</button>
-            <button className={item} onClick={go(onToggle)}><Power className="h-4 w-4 text-slate-400" />{c.active ? t('location.deactivate') : t('location.activate')}</button>
-            <div className="my-1 border-t border-slate-100" />
-            <button className={cn(item, '!text-rose-600 hover:bg-rose-50')} onClick={go(onDelete)}><Trash2 className="h-4 w-4" />{t('common.delete')}</button>
+            {perm.edit && <>
+              <button className={item} onClick={go(onEdit)}><Pencil className="h-4 w-4 text-slate-400" />{t('common.edit')}</button>
+              <button className={item} onClick={go(onToggle)}><Power className="h-4 w-4 text-slate-400" />{c.active ? t('location.deactivate') : t('location.activate')}</button>
+            </>}
+            {perm.edit && perm.del && <div className="my-1 border-t border-slate-100" />}
+            {perm.del && <button className={cn(item, '!text-rose-600 hover:bg-rose-50')} onClick={go(onDelete)}><Trash2 className="h-4 w-4" />{t('common.delete')}</button>}
           </motion.div>
         )}
       </AnimatePresence>
@@ -50,7 +52,7 @@ export default function CustodiansPage() {
   const { t, te } = useI18n();
   const { can } = useAuth();
   const router = useRouter();
-  const writable = can('manage');
+  const perm = { add: can('custodians.add'), edit: can('custodians.edit'), del: can('custodians.delete') };
   const [q, setQ] = useState('');
   const dq = useDebounce(q);
   const { data, loading, reload, setData } = useApi('/custodians', { q: dq });
@@ -123,7 +125,7 @@ export default function CustodiansPage() {
   return (
     <div>
       <PageHeader title={t('custodian.title')} subtitle={t('custodian.subtitle', { n: rows.length })}
-        actions={writable && <Button icon={Plus} onClick={() => open(null)}>{t('custodian.add')}</Button>} />
+        actions={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('custodian.add')}</Button>} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s, i) => (
@@ -143,7 +145,7 @@ export default function CustodiansPage() {
       {loading && !data ? (
         <div className="grid gap-4 md:grid-cols-2">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-36" />)}</div>
       ) : rows.length === 0 ? (
-        <div className="card"><EmptyState icon={Users} title={t('common.no_data')} action={writable && <Button icon={Plus} onClick={() => open(null)}>{t('custodian.add')}</Button>} /></div>
+        <div className="card"><EmptyState icon={Users} title={t('common.no_data')} action={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('custodian.add')}</Button>} /></div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {rows.map((c, i) => (
@@ -168,7 +170,7 @@ export default function CustodiansPage() {
               </div>
               <div className="mt-4 flex items-center gap-2">
                 <Button size="sm" variant="secondary" className="!py-2" onClick={() => router.push(`/assets?custodian_id=${c.id}`)}>{t('location.view_assets')}</Button>
-                {writable && <CardMenu c={c} onEdit={() => open(c)} onToggle={() => toggle(c)} onDelete={() => setDel(c)} />}
+                {(perm.edit || perm.del) && <CardMenu c={c} perm={perm} onEdit={() => open(c)} onToggle={() => toggle(c)} onDelete={() => setDel(c)} />}
                 {!c.active && <Badge tone="gray" className="ml-auto">{t('common.inactive')}</Badge>}
               </div>
             </motion.div>

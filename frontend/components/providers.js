@@ -169,15 +169,19 @@ export function AuthProvider({ children }) {
     window.location.href = '/login';
   }, []);
 
-  /** Permission helper: can('write') / can('admin') / can('manage') */
+  /**
+   * Permission helper (role permissions are configured on Users → Roles & permissions):
+   *   can('assets.add') · can('repairs.edit') · can('users.view') — module.action from the matrix
+   *   can('admin') — the admin role itself (e.g. editing the permission matrix)
+   */
   const can = useCallback(
     (what) => {
       const role = user?.role;
       if (!role) return false;
-      if (what === 'admin') return role === 'admin';
-      if (what === 'manage') return role === 'admin' || role === 'manager';
-      if (what === 'write') return role !== 'viewer';
-      return true;
+      if (role === 'admin') return true;
+      if (what === 'admin') return false;
+      const [module, action = 'view'] = String(what).split('.');
+      return !!user.permissions?.[module]?.[action];
     },
     [user]
   );

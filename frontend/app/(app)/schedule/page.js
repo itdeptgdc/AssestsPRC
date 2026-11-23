@@ -33,7 +33,7 @@ export default function SchedulePage() {
   return (
     <div>
       <PageHeader title={t('schedule.title')} subtitle={t('schedule.subtitle', { n: data?.days || 30 })}
-        actions={can('write') && <Button icon={ClipboardCheck} onClick={() => setInspect({})}>{t('inspection.new')}</Button>} />
+        actions={can('inspections.add') && <Button icon={ClipboardCheck} onClick={() => setInspect({})}>{t('inspection.new')}</Button>} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map((x, i) => (
@@ -77,7 +77,7 @@ export default function SchedulePage() {
                     <DueBadge days={a.days_left} />
                     <span className="mt-0.5 text-[11px] text-slate-400">{fmtDate(a.next_inspection, lang)}</span>
                   </div>
-                  {can('write') && <Button size="sm" variant="soft" icon={ClipboardCheck} onClick={() => setInspect(a)}>{t('assets.inspect')}</Button>}
+                  {can('inspections.add') && <Button size="sm" variant="soft" icon={ClipboardCheck} onClick={() => setInspect(a)}>{t('assets.inspect')}</Button>}
                 </div>
               </div>
             </motion.div>

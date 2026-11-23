@@ -1,10 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { query, update, pick, logActivity } = require('../db');
-const { requireRole } = require('../middleware/auth');
+const { requirePerm } = require('../middleware/auth');
+const { ROLES } = require('../permissions');
 
 const r = express.Router();
-const ROLES = ['admin', 'manager', 'staff', 'viewer'];
 
 const LIST = `
   SELECT u.id, u.name, u.email, u.role, u.phone, u.active, u.department_id, u.last_login, u.created_at,
@@ -17,9 +17,17 @@ const LIST = `
 
 const one = async (id) => (await query(`${LIST} WHERE u.id=$1`, [id])).rows[0];
 
-r.use(requireRole('admin'));
+// Only admins may create admins or change admin accounts (prevents privilege escalation
+// by a non-admin who was given access to the Users tab)
+const isAdmin = (req) => req.user.role === 'admin';
+async function guardTarget(req, res, next) {
+  if (isAdmin(req)) return next();
+  const { rows } = await query('SELECT role FROM users WHERE id=$1', [req.params.id]);
+  if (rows[0]?.role === 'admin') return res.status(403).json({ error: 'forbidden' });
+  next();
+}
 
-r.get('/', async (req, res) => {
+r.get('/', requirePerm('users', 'view'), async (req, res) => {
   const params = [];
   let where = '';
   if (req.query.q) {
@@ -30,11 +38,12 @@ r.get('/', async (req, res) => {
   res.json(rows);
 });
 
-r.post('/', async (req, res) => {
+r.post('/', requirePerm('users', 'add'), async (req, res) => {
   const { name, email, password, role = 'staff', phone, department_id, active = true } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'required' });
   if (String(password).length < 6) return res.status(400).json({ error: 'password_too_short' });
   if (!ROLES.includes(role)) return res.status(400).json({ error: 'invalid_input' });
+  if (role === 'admin' && !isAdmin(req)) return res.status(403).json({ error: 'forbidden' });
   const { rows } = await query(
     `INSERT INTO users (name, email, password_hash, role, phone, department_id, active) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
     [name, String(email).trim().toLowerCase(), await bcrypt.hash(String(password), 10), role, phone || null, department_id || null, !!active]
@@ -43,13 +52,14 @@ r.post('/', async (req, res) => {
   res.status(201).json(await one(rows[0].id));
 });
 
-r.put('/:id', async (req, res) => {
+r.put('/:id', requirePerm('users', 'edit'), guardTarget, async (req, res) => {
   const id = Number(req.params.id);
   const data = pick(req.body, ['name', 'email', 'role', 'phone', 'department_id', 'active']);
   if (data.role && !ROLES.includes(data.role)) return res.status(400).json({ error: 'invalid_input' });
+  if (data.role === 'admin' && !isAdmin(req)) return res.status(403).json({ error: 'forbidden' });
   if (data.email) data.email = String(data.email).trim().toLowerCase();
   if (data.active !== undefined) data.active = !!data.active;
-  if (id === req.user.id && (data.active === false || (data.role && data.role !== 'admin'))) {
+  if (id === req.user.id && (data.active === false || (data.role && data.role !== req.user.role))) {
     return res.status(400).json({ error: 'cannot_modify_self' });
   }
   if (req.body?.password) {
@@ -66,7 +76,7 @@ r.put('/:id', async (req, res) => {
 });
 
 // Admin resets a user's password
-r.post('/:id/reset-password', async (req, res) => {
+r.post('/:id/reset-password', requirePerm('users', 'edit'), guardTarget, async (req, res) => {
   const pw = String(req.body?.password || '');
   if (pw.length < 6) return res.status(400).json({ error: 'password_too_short' });
   const { rowCount } = await query(
@@ -79,7 +89,7 @@ r.post('/:id/reset-password', async (req, res) => {
 });
 
 // Force sign-out from all devices
-r.post('/:id/logout', async (req, res) => {
+r.post('/:id/logout', requirePerm('users', 'edit'), guardTarget, async (req, res) => {
   if (Number(req.params.id) === req.user.id) return res.status(400).json({ error: 'cannot_modify_self' });
   const { rowCount } = await query('UPDATE users SET token_version = token_version + 1 WHERE id=$1', [req.params.id]);
   if (!rowCount) return res.status(404).json({ error: 'not_found' });
@@ -87,7 +97,7 @@ r.post('/:id/logout', async (req, res) => {
 });
 
 // Users with work history can only be deactivated
-r.delete('/:id', async (req, res) => {
+r.delete('/:id', requirePerm('users', 'delete'), guardTarget, async (req, res) => {
   const id = Number(req.params.id);
   if (id === req.user.id) return res.status(400).json({ error: 'cannot_modify_self' });
   const u = await one(id);

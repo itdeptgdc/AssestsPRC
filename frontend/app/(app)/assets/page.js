@@ -120,9 +120,9 @@ function AssetsInner() {
   const Actions = ({ a }) => (
     <RowActions actions={[
       { key: 'view', icon: Eye, tone: 'slate', label: t('common.view'), onClick: () => router.push(`/assets/${a.id}`) },
-      can('write') && { key: 'edit', icon: Pencil, tone: 'brand', label: t('common.edit'), onClick: () => router.push(`/assets/${a.id}/edit`) },
-      can('write') && { key: 'inspect', icon: ClipboardCheck, tone: 'green', label: t('assets.inspect'), onClick: () => setInspect(a) },
-      can('write') && { key: 'repair', icon: Wrench, tone: 'amber', label: t('assets.report_repair'), onClick: () => setRepair(a) },
+      can('assets.edit') && { key: 'edit', icon: Pencil, tone: 'brand', label: t('common.edit'), onClick: () => router.push(`/assets/${a.id}/edit`) },
+      can('inspections.add') && { key: 'inspect', icon: ClipboardCheck, tone: 'green', label: t('assets.inspect'), onClick: () => setInspect(a) },
+      can('repairs.add') && { key: 'repair', icon: Wrench, tone: 'amber', label: t('assets.report_repair'), onClick: () => setRepair(a) },
       { key: 'qr', icon: QrCode, tone: 'violet', label: t('assets.print_qr'), onClick: () => router.push(`/print?ids=${a.id}`) },
     ]} />
   );
@@ -141,8 +141,8 @@ function AssetsInner() {
             {selCount > 0 && <span className="rounded-full bg-brand-600 px-1.5 py-px text-[11px] font-bold leading-4 text-white">{selCount}</span>}
           </Button>
           <ExportMenu path="/reports/export/assets" name="asset-register" params={exportParams} count={selCount} scope={exportScope} />
-          <Button variant="secondary" icon={Printer} onClick={() => router.push('/print')}>{t('assets.print_qr')}</Button>
-          {can('write') && <Button icon={Plus} onClick={() => router.push('/assets/new')}>{t('assets.add')}</Button>}
+          {can('print') && <Button variant="secondary" icon={Printer} onClick={() => router.push('/print')}>{t('assets.print_qr')}</Button>}
+          {can('assets.add') && <Button icon={Plus} onClick={() => router.push('/assets/new')}>{t('assets.add')}</Button>}
         </>}
       />
 
@@ -181,7 +181,7 @@ function AssetsInner() {
           <div className="space-y-3 p-5">{[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-12" />)}</div>
         ) : items.length === 0 ? (
           <EmptyState icon={Package} title={t('assets.empty')} text={t('assets.empty_text')}
-            action={can('write') && <Button icon={Plus} onClick={() => router.push('/assets/new')}>{t('assets.add')}</Button>} />
+            action={can('assets.add') && <Button icon={Plus} onClick={() => router.push('/assets/new')}>{t('assets.add')}</Button>} />
         ) : (
           <>
             {/* Selection bar: count, "select all N records", export / print selected, clear */}

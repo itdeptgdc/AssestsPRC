@@ -32,7 +32,7 @@ export default function InspectionsPage() {
       <PageHeader title={t('inspection.title')} subtitle={t('inspection.subtitle', { n: data?.total ?? 0 })}
         actions={<>
           <ExportMenu path="/reports/export/inspections" name="inspection-history" params={{ q: dq, result, from, to }} />
-          {can('write') && <Button icon={ClipboardCheck} onClick={() => setCreating(true)}>{t('inspection.new')}</Button>}
+          {can('inspections.add') && <Button icon={ClipboardCheck} onClick={() => setCreating(true)}>{t('inspection.new')}</Button>}
         </>} />
 
       <div className="card mb-4 grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_160px_160px]">

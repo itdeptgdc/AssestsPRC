@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { query } = require('../db');
+const { getForRole, has } = require('../permissions');
 
 const SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
@@ -27,10 +28,7 @@ async function authenticate(req, res, next) {
   if (!user || !user.active || (payload.tv || 0) !== user.token_version) return res.status(401).json({ error: 'unauthorized' });
   delete user.token_version;
   req.user = user;
-  // Viewers are read-only everywhere (except their own profile / password)
-  if (user.role === 'viewer' && req.method !== 'GET' && !req.originalUrl.startsWith('/api/auth/')) {
-    return res.status(403).json({ error: 'forbidden' });
-  }
+  req.perms = await getForRole(user.role);
   next();
 }
 
@@ -39,4 +37,17 @@ const requireRole = (...roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { signToken, authenticate, requireRole, SECRET };
+/** requirePerm('assets', 'add') — checks the configurable role permission matrix */
+const requirePerm = (module, action) => (req, res, next) => {
+  if (!req.user || !has(req.perms, module, action)) return res.status(403).json({ error: 'forbidden' });
+  next();
+};
+
+/** passes when the user may add or edit anything (e.g. uploading photos) */
+const requireAnyWrite = (req, res, next) => {
+  const ok = Object.values(req.perms || {}).some((p) => p.add || p.edit);
+  if (!ok) return res.status(403).json({ error: 'forbidden' });
+  next();
+};
+
+module.exports = { signToken, authenticate, requireRole, requirePerm, requireAnyWrite, SECRET };

@@ -9,6 +9,7 @@ const notify = (type, codeKey) => (row, req) =>
 const r = express.Router();
 
 r.use('/companies', crudRouter({
+  module: 'companies',
   table: 'companies',
   fields: ['code', 'name', 'active'],
   required: ['code', 'name'],
@@ -17,6 +18,7 @@ r.use('/companies', crudRouter({
 }));
 
 r.use('/departments', crudRouter({
+  module: 'departments',
   table: 'department_codes',
   afterCreate: notify('department', 'dept_no'),
   fields: ['code', 'name', 'head', 'email', 'dept_no', 'active'],
@@ -31,6 +33,7 @@ r.use('/departments', crudRouter({
 }));
 
 r.use('/locations', crudRouter({
+  module: 'locations',
   table: 'locations',
   fields: ['code', 'name', 'building', 'floor', 'room', 'description', 'active'],
   required: ['code', 'name'],
@@ -47,6 +50,7 @@ r.use('/locations', crudRouter({
 }));
 
 r.use('/custodians', crudRouter({
+  module: 'custodians',
   table: 'custodians',
   fields: ['employee_code', 'name', 'position', 'department_id', 'phone', 'email', 'active'],
   required: ['name'],
@@ -59,6 +63,7 @@ r.use('/custodians', crudRouter({
 }));
 
 r.use('/categories', crudRouter({
+  module: 'categories',
   table: 'asset_codes',
   afterCreate: notify('asset_code', 'code'),
   fields: ['code', 'account_code', 'name', 'description', 'inspection_months', 'checklist', 'color', 'active'],
@@ -76,6 +81,8 @@ r.use('/categories', crudRouter({
 }));
 
 r.use('/asset-types', crudRouter({
+  module: 'categories', // types are managed inside a category: changing them counts as editing the category
+  perm: { add: 'edit', edit: 'edit', delete: 'edit' },
   table: 'asset_types',
   fields: ['category_id', 'number', 'name', 'active'],
   required: ['category_id', 'number', 'name'],

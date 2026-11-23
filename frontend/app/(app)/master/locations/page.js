@@ -13,7 +13,7 @@ import {
 
 const label = (l) => [l.building, l.floor, l.name].filter(Boolean).join(' · ');
 
-function RowMenu({ loc, writable, onEdit, onToggle, onDelete }) {
+function RowMenu({ loc, perm, onEdit, onToggle, onDelete }) {
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -36,13 +36,15 @@ function RowMenu({ loc, writable, onEdit, onToggle, onDelete }) {
             <button className={cn(item, 'text-slate-700')} onClick={() => { setOpen(false); router.push(`/assets?location_id=${loc.id}`); }}>
               <Eye className="h-4 w-4 text-slate-400" />{t('location.view_assets')}
             </button>
-            {writable && <>
+            {perm.edit && <>
               <button className={cn(item, 'text-slate-700')} onClick={() => { setOpen(false); onEdit(loc); }}>
                 <Pencil className="h-4 w-4 text-slate-400" />{t('common.edit')}
               </button>
               <button className={cn(item, 'text-slate-700')} onClick={() => { setOpen(false); onToggle(loc); }}>
                 <Power className="h-4 w-4 text-slate-400" />{loc.active ? t('location.deactivate') : t('location.activate')}
               </button>
+            </>}
+            {perm.del && <>
               <div className="my-1 border-t border-slate-100" />
               <button className={cn(item, 'text-rose-600 hover:bg-rose-50')} onClick={() => { setOpen(false); onDelete(loc); }}>
                 <Trash2 className="h-4 w-4" />{t('common.delete')}
@@ -58,7 +60,7 @@ function RowMenu({ loc, writable, onEdit, onToggle, onDelete }) {
 export default function LocationsPage() {
   const { t, te } = useI18n();
   const { can } = useAuth();
-  const writable = can('manage');
+  const perm = { add: can('locations.add'), edit: can('locations.edit'), del: can('locations.delete') };
   const [q, setQ] = useState('');
   const dq = useDebounce(q);
   const { data, loading, reload, setData } = useApi('/locations', { q: dq });
@@ -127,7 +129,7 @@ export default function LocationsPage() {
   return (
     <div>
       <PageHeader title={t('location.title')} subtitle={t('location.subtitle', { n: rows.length })}
-        actions={writable && <Button icon={Plus} onClick={() => open(null)}>{t('location.add')}</Button>} />
+        actions={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('location.add')}</Button>} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s, i) => (
@@ -148,7 +150,7 @@ export default function LocationsPage() {
         {loading && !data ? (
           <div className="space-y-3 p-5">{[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-12" />)}</div>
         ) : rows.length === 0 ? (
-          <EmptyState icon={MapPin} title={t('common.no_data')} action={writable && <Button icon={Plus} onClick={() => open(null)}>{t('location.add')}</Button>} />
+          <EmptyState icon={MapPin} title={t('common.no_data')} action={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('location.add')}</Button>} />
         ) : (
           <div className="divide-y divide-slate-100">
             {rows.map((l, i) => (
@@ -157,7 +159,7 @@ export default function LocationsPage() {
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:scale-110">
                   <MapPin className="h-[18px] w-[18px]" />
                 </span>
-                <button type="button" onClick={() => writable && open(l)} className="min-w-0 flex-1 text-left">
+                <button type="button" onClick={() => perm.edit && open(l)} className="min-w-0 flex-1 text-left">
                   <p className="truncate text-[14px] font-semibold text-slate-800">{label(l)}</p>
                   <p className="text-xs text-slate-400">
                     {Number(l.asset_count) > 0 ? t('location.n_assets', { n: l.asset_count }) : t('location.no_assets')}
@@ -165,7 +167,7 @@ export default function LocationsPage() {
                   </p>
                 </button>
                 {l.active ? <Badge tone="green">{t('location.in_use')}</Badge> : <Badge tone="gray">{t('common.inactive')}</Badge>}
-                <RowMenu loc={l} writable={writable} onEdit={open} onToggle={toggle} onDelete={setDel} />
+                <RowMenu loc={l} perm={perm} onEdit={open} onToggle={toggle} onDelete={setDel} />
               </motion.div>
             ))}
           </div>

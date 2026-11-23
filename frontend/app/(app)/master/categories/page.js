@@ -144,7 +144,7 @@ function ChecklistEditor({ value, onChange }) {
   );
 }
 
-function CardMenu({ c, onEdit, onTypes, onToggle, onDelete }) {
+function CardMenu({ c, perm, onEdit, onTypes, onToggle, onDelete }) {
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -166,11 +166,15 @@ function CardMenu({ c, onEdit, onTypes, onToggle, onDelete }) {
           <motion.div initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={{ duration: 0.12 }}
             className="absolute right-0 z-20 mt-1.5 w-52 origin-top-right rounded-xl border border-slate-100 bg-white p-1.5 shadow-xl">
             <button className={item} onClick={go(() => router.push(`/assets?category_id=${c.id}`))}><Eye className="h-4 w-4 text-slate-400" />{t('location.view_assets')}</button>
-            <button className={item} onClick={go(onEdit)}><Pencil className="h-4 w-4 text-slate-400" />{t('common.edit')}</button>
-            <button className={item} onClick={go(onTypes)}><Hash className="h-4 w-4 text-slate-400" />{t('category.types')}</button>
-            <button className={item} onClick={go(onToggle)}><Power className="h-4 w-4 text-slate-400" />{c.active ? t('location.deactivate') : t('location.activate')}</button>
-            <div className="my-1 border-t border-slate-100" />
-            <button className={cn(item, '!text-rose-600 hover:bg-rose-50')} onClick={go(onDelete)}><Trash2 className="h-4 w-4" />{t('common.delete')}</button>
+            {perm.edit && <>
+              <button className={item} onClick={go(onEdit)}><Pencil className="h-4 w-4 text-slate-400" />{t('common.edit')}</button>
+              <button className={item} onClick={go(onTypes)}><Hash className="h-4 w-4 text-slate-400" />{t('category.types')}</button>
+              <button className={item} onClick={go(onToggle)}><Power className="h-4 w-4 text-slate-400" />{c.active ? t('location.deactivate') : t('location.activate')}</button>
+            </>}
+            {perm.del && <>
+              <div className="my-1 border-t border-slate-100" />
+              <button className={cn(item, '!text-rose-600 hover:bg-rose-50')} onClick={go(onDelete)}><Trash2 className="h-4 w-4" />{t('common.delete')}</button>
+            </>}
           </motion.div>
         )}
       </AnimatePresence>
@@ -181,7 +185,8 @@ function CardMenu({ c, onEdit, onTypes, onToggle, onDelete }) {
 export default function CategoriesPage() {
   const { t, te } = useI18n();
   const { can } = useAuth();
-  const writable = can('manage');
+  const perm = { add: can('categories.add'), edit: can('categories.edit'), del: can('categories.delete') };
+  const writable = perm.edit;
   const [q, setQ] = useState('');
   const dq = useDebounce(q);
   const { data, loading, reload, setData } = useApi('/categories', { q: dq });
@@ -251,7 +256,7 @@ export default function CategoriesPage() {
   return (
     <div>
       <PageHeader title={t('category.title')} subtitle={t('category.subtitle', { n: rows.length })}
-        actions={writable && <Button icon={Plus} onClick={() => open(null)}>{t('category.add')}</Button>} />
+        actions={perm.add && <Button icon={Plus} onClick={() => open(null)}>{t('category.add')}</Button>} />
 
       <div className="card mb-4 p-3"><SearchInput value={q} onChange={setQ} placeholder={t('common.search_ph')} /></div>
 
@@ -271,14 +276,14 @@ export default function CategoriesPage() {
                     {c.code}
                   </span>
                 </div>
-                {writable && (
+                {(perm.edit || perm.del) && (
                   <>
-                    <button type="button" onClick={() => open(c, 'types')} title={t('category.types')}
+                    {perm.edit && <button type="button" onClick={() => open(c, 'types')} title={t('category.types')}
                       className="btn-icon relative shrink-0">
                       <Tag className="h-4 w-4" />
                       {(c.types || []).length > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-600 px-1 text-[9px] font-bold text-white">{c.types.length}</span>}
-                    </button>
-                    <CardMenu c={c} onEdit={() => open(c)} onTypes={() => open(c, 'types')} onToggle={() => toggle(c)} onDelete={() => setDel(c)} />
+                    </button>}
+                    <CardMenu c={c} perm={perm} onEdit={() => open(c)} onTypes={() => open(c, 'types')} onToggle={() => toggle(c)} onDelete={() => setDel(c)} />
                   </>
                 )}
               </div>
@@ -304,7 +309,7 @@ export default function CategoriesPage() {
         title={editing?.id ? editing.name : t('category.add')}
         subtitle={editing?.id ? editing.code : undefined}
         footer={tab !== 'types' ? <>
-          {editing?.id && <Button variant="ghost" className="mr-auto text-rose-600 hover:bg-rose-50" icon={Trash2} onClick={() => { setDel(editing); setEditing(null); }}>{t('common.delete')}</Button>}
+          {editing?.id && perm.del && <Button variant="ghost" className="mr-auto text-rose-600 hover:bg-rose-50" icon={Trash2} onClick={() => { setDel(editing); setEditing(null); }}>{t('common.delete')}</Button>}
           <Button variant="secondary" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
           <Button onClick={save} loading={saving}>{t('common.save')}</Button>
         </> : <Button variant="secondary" onClick={() => setEditing(null)}>{t('common.close')}</Button>}>

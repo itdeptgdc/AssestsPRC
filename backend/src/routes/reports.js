@@ -1,12 +1,17 @@
 const express = require('express');
 const { query } = require('../db');
+const { has } = require('../permissions');
 const { sendReport, sendFile, STATUS, money, pdf } = require('../utils/export');
 const { buildAssetReport } = require('../utils/assetReport');
 const { assetFilter, ASSET_SELECT } = require('./assets');
 
 const r = express.Router();
 
-r.get('/summary', async (_req, res) => {
+// Reports tab, or the module page the export button lives on
+const viewAny = (...modules) => (req, res, next) =>
+  (modules.some((m) => has(req.perms, m, 'view')) ? next() : res.status(403).json({ error: 'forbidden' }));
+
+r.get('/summary', viewAny('reports'), async (_req, res) => {
   const group = (joinTable, fk, alias, label) =>
     query(`SELECT ${alias}.id, ${label} AS label, COUNT(a.id) AS count, COALESCE(SUM(a.cost),0) AS value
              FROM assets a LEFT JOIN ${joinTable} ${alias} ON ${alias}.id = a.${fk}
@@ -31,7 +36,7 @@ r.get('/summary', async (_req, res) => {
 
 // ---------- Asset Report: one PDF page per asset (?ids=1,2,3 or the Asset Register filters) ----------
 const MAX_SHEETS = 300;
-r.get('/export/asset-report', async (req, res) => {
+r.get('/export/asset-report', viewAny('reports', 'assets'), async (req, res) => {
   const { whereSql, params } = await assetFilter(req.query);
   const { rows } = await query(`SELECT x.* FROM (${ASSET_SELECT} ${whereSql}) x ORDER BY x.code LIMIT ${MAX_SHEETS + 1}`, params);
   if (rows.length > MAX_SHEETS) return res.status(400).json({ error: 'too_many', max: MAX_SHEETS });
@@ -79,7 +84,7 @@ async function describeAssetFilters(q) {
   return parts.join('  ·  ');
 }
 
-r.get('/export/assets', async (req, res) => {
+r.get('/export/assets', viewAny('reports', 'assets'), async (req, res) => {
   // same filters as the Asset Register list, so the file matches what is on screen
   const { whereSql, params } = await assetFilter(req.query);
   const { rows } = await query(`SELECT x.* FROM (${ASSET_SELECT} ${whereSql}) x ORDER BY x.code`, params);
@@ -122,7 +127,7 @@ r.get('/export/assets', async (req, res) => {
   });
 });
 
-r.get('/export/inspections', async (req, res) => {
+r.get('/export/inspections', viewAny('reports', 'inspections'), async (req, res) => {
   // same filters as the Inspection History list
   const q = req.query;
   const params = []; const where = []; const desc = [];
@@ -150,7 +155,7 @@ r.get('/export/inspections', async (req, res) => {
   });
 });
 
-r.get('/export/repairs', async (req, res) => {
+r.get('/export/repairs', viewAny('reports', 'repairs'), async (req, res) => {
   // same filters as the Repair Jobs list (status 'active' = open / in progress / waiting parts)
   const q = req.query;
   const params = []; const where = []; const desc = [];

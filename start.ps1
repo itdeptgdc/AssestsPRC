@@ -14,7 +14,10 @@ function Test-Port($p) { [bool](Get-NetTCPConnection -LocalPort $p -State Listen
 # 1. PostgreSQL
 if (Test-Port 5432) { Write-Host 'PostgreSQL already running on :5432' }
 else {
-  & "$rt\pgsql\bin\pg_ctl.exe" -D "$rt\pgdata" -o '-p 5432 -c listen_addresses=localhost' -l "$logs\postgres.log" -w start | Out-Null
+  # Output goes to NUL via cmd (not a PowerShell pipe): the postgres server inherits pg_ctl's
+  # stdout, and a pipe would never close, which made this script hang after starting PostgreSQL.
+  cmd /c "`"$rt\pgsql\bin\pg_ctl.exe`" -D `"$rt\pgdata`" -o `"-p 5432 -c listen_addresses=localhost`" -l `"$logs\postgres.log`" -w start >NUL 2>&1"
+  if (-not (Test-Port 5432)) { throw "PostgreSQL did not start - see $logs\postgres.log" }
   Write-Host 'PostgreSQL started on :5432'
 }
 

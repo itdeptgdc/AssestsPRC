@@ -89,10 +89,10 @@ export default function AssetDetailPage({ params }) {
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              {can('write') && <Button icon={ClipboardCheck} onClick={() => setInspect(true)}>{t('assets.inspect')}</Button>}
-              {can('write') && <Button variant="secondary" icon={Wrench} onClick={() => setRepair(true)}>{t('assets.report_repair')}</Button>}
-              {can('write') && <Button variant="secondary" icon={Pencil} onClick={() => router.push(`/assets/${a.id}/edit`)}>{t('common.edit')}</Button>}
-              {can('manage') && <Button variant="ghost" icon={Trash2} className="text-rose-600 hover:bg-rose-50" onClick={() => setConfirm(true)}>{t('common.delete')}</Button>}
+              {can('inspections.add') && <Button icon={ClipboardCheck} onClick={() => setInspect(true)}>{t('assets.inspect')}</Button>}
+              {can('repairs.add') && <Button variant="secondary" icon={Wrench} onClick={() => setRepair(true)}>{t('assets.report_repair')}</Button>}
+              {can('assets.edit') && <Button variant="secondary" icon={Pencil} onClick={() => router.push(`/assets/${a.id}/edit`)}>{t('common.edit')}</Button>}
+              {can('assets.delete') && <Button variant="ghost" icon={Trash2} className="text-rose-600 hover:bg-rose-50" onClick={() => setConfirm(true)}>{t('common.delete')}</Button>}
             </div>
           </div>
         </div>
@@ -155,7 +155,7 @@ export default function AssetDetailPage({ params }) {
               {tab === 'repairs' && (a.repairs.length === 0 ? <EmptyState icon={Wrench} title={t('repair.empty')} /> : (
                 <div className="space-y-3">
                   {a.repairs.map((r, i) => (
-                    <motion.button type="button" key={r.id} onClick={() => can('write') && setEditRepair({ ...r, asset_code: a.code, asset_name: a.name })}
+                    <motion.button type="button" key={r.id} onClick={() => can('repairs.edit') && setEditRepair({ ...r, asset_code: a.code, asset_name: a.name })}
                       initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
                       className="w-full rounded-xl border border-slate-100 p-4 text-left transition hover:border-brand-200 hover:shadow-soft">
                       <div className="flex flex-wrap items-center justify-between gap-2">

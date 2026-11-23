@@ -1,15 +1,16 @@
 'use client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardCheck, KeyRound, LogOut, Plus, Settings2, ShieldAlert, ShieldCheck, Trash2, UserCog, Users, UserX } from 'lucide-react';
+import { ClipboardCheck, KeyRound, LockKeyhole, LogOut, Plus, Settings2, ShieldAlert, ShieldCheck, Trash2, UserCog, Users, UserX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { useApi, useDebounce } from '@/lib/hooks';
 import { deptLabel, fmtDateTime } from '@/lib/format';
 import { useAuth, useI18n } from '@/components/providers';
 import {
-  Badge, Button, ConfirmModal, CountUp, EmptyState, Field, IconButton, Input, Modal, PageHeader, PasswordInput, SearchInput, Select, Skeleton, Toggle, cn,
+  Badge, Button, ConfirmModal, CountUp, EmptyState, Field, IconButton, Input, Modal, PageHeader, PasswordInput, SearchInput, Select, Skeleton, Tabs, Toggle, cn,
 } from '@/components/ui';
+import RolePermissions, { RoleSummary } from '@/components/RolePermissions';
 
 const ROLES = ['admin', 'manager', 'staff', 'viewer'];
 const ROLE_TONE = { admin: 'violet', manager: 'brand', staff: 'blue', viewer: 'slate' };
@@ -19,8 +20,12 @@ export default function UsersPage() {
   const { user: me, can } = useAuth();
   const [q, setQ] = useState('');
   const dq = useDebounce(q);
-  const { data, loading, reload, setData } = useApi('/users', { q: dq }, { enabled: can('admin') });
-  const { data: lk } = useApi('/lookups', null, { enabled: can('admin') });
+  const isAdmin = can('admin');
+  const { data, loading, reload, setData } = useApi('/users', { q: dq }, { enabled: can('users.view') });
+  const { data: lk } = useApi('/lookups', null, { enabled: can('users.view') });
+  // permission matrix: only admins may read / change it
+  const { data: rolesData, setData: setRolesData } = useApi('/roles', null, { enabled: isAdmin });
+  const [tab, setTab] = useState('users');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
@@ -29,7 +34,11 @@ export default function UsersPage() {
   const [kick, setKick] = useState(null);
   const [del, setDel] = useState(null);
 
-  if (!can('admin')) return <EmptyState icon={ShieldAlert} title={t('errors.forbidden')} />;
+  if (!can('users.view')) return <EmptyState icon={ShieldAlert} title={t('errors.forbidden')} />;
+
+  // non-admins never see / assign the admin role and cannot change admin accounts
+  const roleOptions = isAdmin ? ROLES : ROLES.filter((r) => r !== 'admin');
+  const canManage = (u) => can('users.edit') && (isAdmin || u.role !== 'admin');
 
   const rows = data || [];
   const stats = [
@@ -113,7 +122,18 @@ export default function UsersPage() {
   return (
     <div>
       <PageHeader title={t('users.title')} subtitle={t('users.summary', { n: rows.length, a: rows.filter((u) => u.active).length })}
-        actions={<Button icon={Plus} onClick={() => open(null)}>{t('users.add')}</Button>} />
+        actions={tab === 'users' && can('users.add') && <Button icon={Plus} onClick={() => open(null)}>{t('users.add')}</Button>} />
+
+      {isAdmin && (
+        <div className="mb-5">
+          <Tabs value={tab} onChange={setTab} tabs={[
+            { value: 'users', label: t('perm.tab_users'), icon: Users },
+            { value: 'roles', label: t('perm.tab_roles'), icon: LockKeyhole },
+          ]} />
+        </div>
+      )}
+
+      {tab === 'roles' && isAdmin ? <RolePermissions data={rolesData} onSaved={setRolesData} /> : <>
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s, i) => (
@@ -166,12 +186,14 @@ export default function UsersPage() {
                           <td><Badge tone={ROLE_TONE[u.role]}>{t(`roles.${u.role}`)}</Badge></td>
                           <td className="hidden text-slate-600 lg:table-cell">{u.department_name || '-'}</td>
                           <td className="hidden text-xs text-slate-500 xl:table-cell">{u.last_login ? fmtDateTime(u.last_login, lang) : '-'}</td>
-                          <td>{self ? <Badge tone="green" dot>{t('common.active')}</Badge> : <Toggle checked={u.active} onChange={() => toggleActive(u)} />}</td>
+                          <td>{self || !canManage(u) ? <Badge tone={u.active ? 'green' : 'slate'} dot>{t(u.active ? 'common.active' : 'common.inactive')}</Badge> : <Toggle checked={u.active} onChange={() => toggleActive(u)} />}</td>
                           <td>
                             <div className="flex justify-end gap-1.5">
-                              <IconButton icon={Settings2} title={t('users.edit')} onClick={() => open(u)} />
-                              <IconButton icon={KeyRound} tone="amber" title={t('users.reset_password')} onClick={() => { setReset(u); setNewPw(''); }} />
-                              {!self && <IconButton icon={LogOut} tone="red" title={t('users.force_signout')} onClick={() => setKick(u)} />}
+                              {canManage(u) && <>
+                                <IconButton icon={Settings2} title={t('users.edit')} onClick={() => open(u)} />
+                                <IconButton icon={KeyRound} tone="amber" title={t('users.reset_password')} onClick={() => { setReset(u); setNewPw(''); }} />
+                                {!self && <IconButton icon={LogOut} tone="red" title={t('users.force_signout')} onClick={() => setKick(u)} />}
+                              </>}
                             </div>
                           </td>
                         </motion.tr>
@@ -193,7 +215,7 @@ export default function UsersPage() {
                           <p className="truncate font-semibold text-slate-800">{u.name}</p>
                           <p className="truncate text-xs text-slate-400">{u.email}</p>
                         </div>
-                        {!self && <Toggle checked={u.active} onChange={() => toggleActive(u)} />}
+                        {!self && canManage(u) && <Toggle checked={u.active} onChange={() => toggleActive(u)} />}
                       </div>
                       <div className="mt-3 flex items-center justify-between gap-2">
                         <div className="flex flex-wrap gap-1.5">
@@ -201,9 +223,11 @@ export default function UsersPage() {
                           {u.department_name && <Badge>{u.department_name}</Badge>}
                         </div>
                         <div className="flex gap-1.5">
-                          <IconButton icon={Settings2} onClick={() => open(u)} />
-                          <IconButton icon={KeyRound} tone="amber" onClick={() => { setReset(u); setNewPw(''); }} />
-                          {!self && <IconButton icon={LogOut} tone="red" onClick={() => setKick(u)} />}
+                          {canManage(u) && <>
+                            <IconButton icon={Settings2} onClick={() => open(u)} />
+                            <IconButton icon={KeyRound} tone="amber" onClick={() => { setReset(u); setNewPw(''); }} />
+                            {!self && <IconButton icon={LogOut} tone="red" onClick={() => setKick(u)} />}
+                          </>}
                         </div>
                       </div>
                     </div>
@@ -214,11 +238,12 @@ export default function UsersPage() {
           )}
       </div>
       <p className="mt-3 text-xs text-slate-400">* {t('users.history_note')}</p>
+      </>}
 
       {/* Add / edit */}
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? t('users.edit') : t('users.add')}
         footer={<>
-          {editing?.id && editing.id !== me.id && (
+          {editing?.id && editing.id !== me.id && can('users.delete') && (
             <Button variant="ghost" className="mr-auto text-rose-600 hover:bg-rose-50" icon={Trash2} onClick={() => setDel(editing)}>{t('common.delete')}</Button>
           )}
           <Button variant="secondary" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
@@ -229,7 +254,7 @@ export default function UsersPage() {
           <Field label={t('auth.email')} required><Input type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
           <Field label={t('users.role')} required>
             <Select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} disabled={editing?.id === me.id}>
-              {ROLES.map((r) => <option key={r} value={r}>{t(`roles.${r}`)}</option>)}
+              {roleOptions.map((r) => <option key={r} value={r}>{t(`roles.${r}`)}</option>)}
             </Select>
           </Field>
           <Field label={t('code.department')}>
@@ -243,7 +268,15 @@ export default function UsersPage() {
               <PasswordInput autoComplete="new-password" value={form.password || ''} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </Field>
           )}
-          <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500 sm:col-span-2">{t(`users.role_desc.${form.role}`)}</div>
+          <div className="space-y-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-500 sm:col-span-2">
+            <p>{t(`users.role_desc.${form.role}`)}</p>
+            {rolesData && form.role !== 'admin' && <RoleSummary perms={rolesData.permissions[form.role]} modules={rolesData.modules} />}
+            {isAdmin && form.role !== 'admin' && (
+              <button type="button" className="font-semibold text-brand-600 hover:underline" onClick={() => { setEditing(null); setTab('roles'); }}>
+                {t('perm.edit_role_link')}
+              </button>
+            )}
+          </div>
           {editing?.id !== me.id && <Toggle checked={!!form.active} onChange={(v) => setForm({ ...form, active: v })} label={t('common.active')} />}
         </div>
       </Modal>
